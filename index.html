@@ -1,34 +1,108 @@
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta name="google-signin-scope" content="profile email">
-  <meta name="google-signin-client_id" content="658362738764-9kdasvdsndig5tsp38u7ra31fu0e7l5t.apps.googleusercontent.com">
-  <script src="https://apis.google.com/js/platform.js" async defer></script>
+  <meta charset="UTF-8">
+  <title>Google API Test</title>
+  <!--<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">-->
+  <style>
+    /*[class*="col-"] {*/
+      /*border: 1px solid #ddd;*/
+    /*}*/
+    .picker-dialog-bg {
+      z-index: 20000 !important;
+    }
+
+    .picker-dialog {
+      z-index: 20001 !important;
+    }
+
+
+
+  </style>
+  <link href="//maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css" rel="stylesheet" >
 </head>
 <body>
-<div class="g-signin2" data-onsuccess="onSignIn" data-theme="dark"></div>
-<a href="#" onclick="signOut();">Sign out</a>
-<script>
-    function onSignIn(googleUser) {
-        // Useful data for your client-side scripts:
-        var profile = googleUser.getBasicProfile();
-        console.log("ID: " + profile.getId()); // Don't send this directly to your server!
-        console.log('Full Name: ' + profile.getName());
-        console.log('Given Name: ' + profile.getGivenName());
-        console.log('Family Name: ' + profile.getFamilyName());
-        console.log("Image URL: " + profile.getImageUrl());
-        console.log("Email: " + profile.getEmail());
+<button type="button" class="btn btn-primary" id="sign-in-or-out-button">Sign In/Authorize</button>
+<button type="button" class="btn btn-danger" id="revoke-access-button">Revoke access</button>
+<div id="auth-status" style="display: inline; padding-left: 25px"></div><hr>
+<!--<div class="alert alert-warning alert-dismissible fade show" role="alert">-->
+  <!--<button type="button" class="close" data-dismiss="alert" aria-label="Close">-->
+    <!--<span aria-hidden="true">&times;</span>-->
+  <!--</button>-->
+  <!--<strong>Holy guacamole!</strong> You should check in on some of those fields below.-->
+<!--</div>-->
+<div id="content"></div>
+  <!--<a class="close" href="#" onclick="$(this).parent().hide();return false;">&times;</a>-->
+  <!--<p style="margin:0!important"></p>-->
+</div>
 
-        // The ID token you need to pass to your backend:
-        var id_token = googleUser.getAuthResponse().id_token;
-        console.log("ID Token: " + id_token);
-    };
+<!--<label for="file-name">Name:</label>-->
+<!--<div class="form-group">-->
+  <!--<input type="text" class="form-control" id="file-name">-->
+<!--</div>-->
+<label for="file-content">Content:</label>
+<div class="form-group">
+  <textarea class="form-control" rows="5" id="file-content"></textarea>
+</div>
+<button id="open-save-file-as-dialog" type="button" class="btn btn-success" >Save File As...</button>
+<button id="save-file" type="button" class="btn btn-success" >Save File</button>
+<button id="load-file" type="button" class="btn btn-success" >Load file</button>
 
-    function signOut() {
-        var auth2 = gapi.auth2.getAuthInstance();
-        auth2.signOut().then(function () {
-            console.log('User signed out.');
-        });
-    }
+<!--<div class="container">-->
+  <!--<div class="row">-->
+    <!--<form class="form-horizontal">-->
+      <!--<div class="form-group">-->
+        <!--<label class="col-sm-2 control-label" for="file-name">Save As:</label>-->
+        <!--&lt;!&ndash;<div class="col-sm-2">unko</div>&ndash;&gt;-->
+        <!--<div class="col-sm-10">-->
+          <!--<input type="text" class="form-control" id="file-name">-->
+        <!--</div>-->
+        <!--<label class="col-sm-2 control-label" for="where">Where:</label>-->
+        <!--<div class="col-sm-9">-->
+          <!--<input type="text" class="form-control" id="where">-->
+        <!--</div>-->
+        <!--<button id="select-folder" type="button" class="btn btn-primary col-sm-1"><span class="glyphicon glyphicon-folder-open"></span></button>-->
+      <!--</div>-->
+    <!--</form>-->
+  <!--</div>-->
+<!--</div>-->
+<!-- Save File Dialog -->
+<div id="save-file-as-dialog" class="modal fade">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+        <h4 class="modal-title">Save File</h4>
+      </div>
+      <div class="modal-body">
+        <div class="container-fluid">
+            <div class="form-group row">
+              <label class="col-sm-2 control-label" for="file-name">Save As:</label>
+              <div class="col-sm-10">
+                <input type="text" class="form-control" id="file-name">
+              </div>
+              <label class="col-sm-2 control-label" for="select-folder">Where:</label>
+              <div class="col-sm-8">
+                <input type="text" id="select-folder" class="form-control" readonly="readonly">
+                <input type="hidden" id="folder-id">
+              </div>
+              <button id="reset-folder" type="button" class="btn btn-primary"><i class="fa fa-home" aria-hidden="true"></i></button>
+            </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+        <button type="button" id="save-file-as" class="btn btn-primary">Save changes</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script type="text/javascript" src="./dist/bundle.js" charset="uft-8"></script>
+<script async defer src="https://apis.google.com/js/api.js"
+        onload="this.onload=function(){};handleClientLoad()"
+        onreadystatechange="if (this.readyState === 'complete') this.onload()">
 </script>
 </body>
 </html>
+

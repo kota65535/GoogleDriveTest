@@ -3,9 +3,10 @@
  */
 
 import 'jquery'
-import "jquery-selector-cache";
+import 'jquery-selector-cache';
 import 'bootstrap'
 import 'bootstrap/dist/css/bootstrap.css';
+import 'bootstrap-notify';
 import {GoogleAuthAPI} from "./GoogleAuthAPI";
 import {GoogleDriveAPI} from "./GoogleDriveAPI";
 
@@ -14,6 +15,8 @@ var SCOPE ='https://www.googleapis.com/auth/docs';
 
 var googleAuth;
 var googlePicker;
+
+var editingFileId;
 
 function onLoaded(isSignedIn) {
     onSignInStatusChanged(isSignedIn);
@@ -41,6 +44,23 @@ function onSignInStatusChanged(isSignedIn) {
         $('#auth-status').html('You have not authorized this app or you are ' +
             'signed out.');
     }
+}
+
+
+function enableSaveFileButton(fileId) {
+    $$('#save-file').removeClass("disabled");
+    $$('#save-file').on('click', (e) => {
+        let content = $$('#file-content').val();
+        googlePicker.updateFile(editingFileId, content)
+            .then(resp => {
+                $.notify({
+                    message: `File "${resp.result.name}" saved, content: ${content}`
+                },{
+                    type: 'info'
+                });
+            })
+    });
+    editingFileId = fileId;
 }
 
 
@@ -73,8 +93,8 @@ window.onload = function () {
     });
 
 
-    $$('#open-save-file-dialog').on('click', (e) => {
-        $$('#save-file-dialog').modal('show');
+    $$('#open-save-file-as-dialog').on('click', (e) => {
+        $$('#save-file-as-dialog').modal('show');
     });
 
 
@@ -97,32 +117,47 @@ window.onload = function () {
     });
 
 
-    $$('#save-file').on('click', (e) => {
+    $$('#save-file-as').on('click', (e) => {
         let fileName = $$('#file-name').val();
         let parentId = $$('#folder-id').val();
         let content = $$('#file-content').val();
 
-        // ファイルを所定のフォルダに作成する
+        if (!fileName) {
+            $.notify({
+                message: "File name is empty."
+            }, {
+                // element: "save-file-as",
+                type: "danger",
+                z_index: 10000,
+                delay: 2000,
+                placement: {
+                    align: "center"
+                }
+            })
+            return
+        }
+
+        // ファイルを所定のフォルダに作成し、さらに中身を書き込む
         googlePicker.createFile(fileName, 'application/json', [parentId])
             .then(resp => {
-                if (!content) return;
-
-                // 中身があれば更新する
                 googlePicker.updateFile(resp.result.id, content)
                     .then(resp => {
-                        console.log(`File saved: fileName: ${fileName}, content: ${content}`);
-                        // flash("UNKO!");
-                        $.alert("Alert Message", "Alert Title")
-
+                        $.notify({
+                            message: `File "${resp.result.name}", content: ${content}`
+                        },{
+                            type: 'info'
+                        });
+                        enableSaveFileButton(resp.result.id);
                     }, resp => {
                         console.log(resp);
                     })
             });
 
         // ダイアログを閉じる
-        $$('#save-file-dialog').modal('hide');
+        $$('#save-file-as-dialog').modal('hide');
     });
 
+    $$('#save-file').addClass("disabled");
 
     $$('#load-file').on('click', (e) => {
         googlePicker.showFilePicker( null, pickerEvent => {
@@ -130,10 +165,16 @@ window.onload = function () {
                 case "loaded":
                     break;
                 case "picked":
-                    let fileId = pickerEvent.docs[0].id;
-                    googlePicker.downloadFile(fileId)
+                    let file = pickerEvent.docs[0];
+                    googlePicker.downloadFile(file.id)
                         .then(resp => {
                             $$('#file-content').val(resp.body);
+                            $.notify({
+                                message: `File "${file.name}" loaded.`
+                            },{
+                                type: 'info'
+                            });
+                            enableSaveFileButton(file.id);
                         });
                     break;
             }
