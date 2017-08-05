@@ -1,54 +1,34 @@
-<!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>Title</title>
-    <style type="text/css">
-        html,
-        body {
-            margin: 0;
-            overflow: hidden;
-            height: 100%;
-        }
-
-        #wrapper {
-            position: fixed;
-            top: 0;
-            width: 100%;
-            height: 100px;
-        }
-
-        /* Scale canvas with resize attribute to full size */
-        canvas[resize] {
-            position: fixed;
-            top: 100px;
-            width: 100%;
-            height: calc(100% - 100px);
-        }
-    </style>
-    <script src="http://code.jquery.com/jquery-1.9.1.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.17.4/lodash.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/paper.js/0.11.4/paper-full.js"></script>
-    <script type="text/javascript" src="./dist/bundle.js"></script>
+  <meta name="google-signin-scope" content="profile email">
+  <meta name="google-signin-client_id" content="658362738764-9kdasvdsndig5tsp38u7ra31fu0e7l5t.apps.googleusercontent.com">
+  <script src="https://apis.google.com/js/platform.js" async defer></script>
 </head>
 <body>
-<div id="wrapper">
-    <div id="downPoint">downPoint</div>
-    <div id="eventPoint">eventPoint</div>
-    <div id="delta">delta</div>
-    <div id="cursorPoint">cusorPoint</div>
-    <div id="cursorDelta">cusorDelta</div>
-    <div id="wheelDelta">wheelDelta</div>
-    <div id="canvasPoint">canvasPoint</div>
-    <div id="canvasSize">canvasSize</div>
-    <div id="viewSize">viweSize</div>
-    <div id="viewCenter">viewCenter</div>
-    <div id="viewRange">viewRange</div>
-</div>
-<canvas id="myCanvas" resize></canvas>
-</body>
+<div class="g-signin2" data-onsuccess="onSignIn" data-theme="dark"></div>
+<a href="#" onclick="signOut();">Sign out</a>
 <script>
+    function onSignIn(googleUser) {
+        // Useful data for your client-side scripts:
+        var profile = googleUser.getBasicProfile();
+        console.log("ID: " + profile.getId()); // Don't send this directly to your server!
+        console.log('Full Name: ' + profile.getName());
+        console.log('Given Name: ' + profile.getGivenName());
+        console.log('Family Name: ' + profile.getFamilyName());
+        console.log("Image URL: " + profile.getImageUrl());
+        console.log("Email: " + profile.getEmail());
 
+        // The ID token you need to pass to your backend:
+        var id_token = googleUser.getAuthResponse().id_token;
+        console.log("ID Token: " + id_token);
+    };
+
+    function signOut() {
+        var auth2 = gapi.auth2.getAuthInstance();
+        auth2.signOut().then(function () {
+            console.log('User signed out.');
+        });
+    }
 </script>
+</body>
 </html>
-

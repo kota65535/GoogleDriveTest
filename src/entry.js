@@ -2,68 +2,148 @@
  * Created by tozawa on 2017/07/23.
  */
 
-import {GridPaper} from "./GridPaper";
-
-var BOARD_WIDTH = 6000;     // ボード幅
-var BOARD_HEIGHT = 4000;    // ボード高さ
-var GRID_SIZE = 50;
-var INITIAL_ZOOM = 0.7;
-var ZOOM_UNIT = 0.002;
-var AVAILABLE_ZOOM_MIN = 0.2;
-var AVAILABLE_ZOOM_MAX = 5;
+import 'jquery'
+import "jquery-selector-cache";
+import 'bootstrap'
+import 'bootstrap/dist/css/bootstrap.css';
+import {GoogleAuthAPI} from "./GoogleAuthAPI";
+import {GoogleDriveAPI} from "./GoogleDriveAPI";
 
 
-paper.install(window);
+var SCOPE ='https://www.googleapis.com/auth/docs';
+
+var googleAuth;
+var googlePicker;
+
+function onLoaded(isSignedIn) {
+    onSignInStatusChanged(isSignedIn);
+}
+
+function onSignInStatusChanged(isSignedIn) {
+    let user = googleAuth.getCurrentUser();
+    let isAuthorized = user.hasGrantedScopes(SCOPE);
+    if (isAuthorized) {
+        $('#sign-in-or-out-button').html('Sign out');
+        $('#revoke-access-button').css('display', 'inline-block');
+        $('#auth-status').html('You are currently signed in and have granted ' +
+            'access to this app.');
+        console.log(user);
+        console.log(user.getAuthResponse().access_token);
+
+        googlePicker = new GoogleDriveAPI(
+            'AIzaSyB6Jfd-o3v5RafVjTNnkBevhjX3_EHqAlE',
+            user.getAuthResponse().access_token
+        );
+
+    } else {
+        $('#sign-in-or-out-button').html('Sign In/Authorize');
+        $('#revoke-access-button').css('display', 'none');
+        $('#auth-status').html('You have not authorized this app or you are ' +
+            'signed out.');
+    }
+}
+
+
+
+window.handleClientLoad = () => {
+    // Load the API's client and auth2 modules.
+    // Call the initClient function after the modules load.
+    googleAuth = new GoogleAuthAPI(
+        'AIzaSyB6Jfd-o3v5RafVjTNnkBevhjX3_EHqAlE',
+        '658362738764-9kdasvdsndig5tsp38u7ra31fu0e7l5t.apps.googleusercontent.com',
+        SCOPE,
+        ['https://www.googleapis.com/discovery/v1/apis/drive/v3/rest'],
+        onLoaded,
+        onSignInStatusChanged
+    )
+    // gapi.signin2.render("my-signin2");
+    // console.info(googleAuth.getCurrentUser());
+}
+
 window.onload = function () {
-    paper.install(window);
-    paper.setup("myCanvas");
 
-    let gridPaper = new GridPaper("myCanvas", BOARD_WIDTH, BOARD_HEIGHT, GRID_SIZE,
-        INITIAL_ZOOM, ZOOM_UNIT, AVAILABLE_ZOOM_MIN, AVAILABLE_ZOOM_MAX);
-
-    // gridPaper.init();
-
-    let canvasElem = $("#myCanvas")[0];
-
-    $("#canvasSize")[0].innerHTML = "canvas size: " + canvasElem.width + ", " + canvasElem.height;
-    $("#viewSize")[0].innerHTML = "view size: " + view.size.width + ", " + view.size.height;
-
-
-    let tool = new Tool();
-
-    tool.onMouseMove = function (event) {
-        $("#eventPoint")[0].innerHTML = "event point: " + event.point.x + ", " + event.point.y;
-        $("#delta")[0].innerHTML = "delta: " + event.delta.x + ", " + event.delta.y;
-        $("#canvasSize")[0].innerHTML = "canvas size: " + canvasElem.width + ", " + canvasElem.height;
-        $("#viewSize")[0].innerHTML = "view size: " + view.size.width + ", " + view.size.height;
-    };
-
-    tool.onMouseDown = function (event) {
-        $("#downPoint")[0].innerHTML = "down point: " + event.downPoint.x + ", " + event.downPoint.y;
-        $("#eventPoint")[0].innerHTML = "event point: " + event.point.x + ", " + event.point.y;
-    };
-
-    tool.onMouseDrag = function (event) {
-        gridPaper.paperOnMouseDrag(event);
-
-        $("#viewRange")[0].innerHTML = "view range: (" + gridPaper.viewCenterMin.x + "," + gridPaper.viewCenterMin.y + ") - (" + gridPaper.viewCenterMax.x + "," + gridPaper.viewCenterMax.y + ")";
-        $("#viewCenter")[0].innerHTML = "view center: " + view.center.x + ", " + view.center.y;
-    };
-
-
-    window.addEventListener('mousemove', function(e){
-        gridPaper.windowOnMouseMove(e);
-
-        $("#cursorPoint")[0].innerHTML = "cursor point: " + gridPaper.cursorPoint.x + ", " + gridPaper.cursorPoint.y;
-        $("#cursorDelta")[0].innerHTML = "cursor delta: " + gridPaper.cursorDelta.x + ", " + gridPaper.cursorDelta.y;
-        $("#canvasPoint")[0].innerHTML = "canvas point: " + gridPaper.canvasPoint.x + ", " + gridPaper.canvasPoint.y;
-    });
-
-    window.addEventListener("mousewheel", function(e) {
-        gridPaper.windowOnMouseWheel(e);
-
-        $("#viewSize")[0].innerHTML = "view size: " + view.size.width + ", " + view.size.height;
+    $$("#sign-in-or-out-button").on("click", (e) => {
+        if (googleAuth.isSignedIn()) {
+            // User is authorized and has clicked 'Sign out' button.
+            googleAuth.signOut();
+        } else {
+            // User is not signed in. Start Google auth flow.
+            googleAuth.signIn();
+        }
     });
 
 
+    $$('#open-save-file-dialog').on('click', (e) => {
+        $$('#save-file-dialog').modal('show');
+    });
+
+
+    $$('#select-folder').on('click', (e) => {
+        googlePicker.showFolderPicker(null, pickerEvent => {
+            switch(pickerEvent.action) {
+                case "loaded":
+                    break;
+                case "picked":
+                    let folderId = pickerEvent.docs[0].id;
+                    $$('#folder-id').val(folderId);
+                    googlePicker.getFilePath(folderId)
+                        .then(path => {
+                            console.log(`File path: ${path}`);
+                            $$('#select-folder').val(path);
+                        });
+                    break;
+            }
+        });
+    });
+
+
+    $$('#save-file').on('click', (e) => {
+        let fileName = $$('#file-name').val();
+        let parentId = $$('#folder-id').val();
+        let content = $$('#file-content').val();
+
+        // ファイルを所定のフォルダに作成する
+        googlePicker.createFile(fileName, 'application/json', [parentId])
+            .then(resp => {
+                if (!content) return;
+
+                // 中身があれば更新する
+                googlePicker.updateFile(resp.result.id, content)
+                    .then(resp => {
+                        console.log(`File saved: fileName: ${fileName}, content: ${content}`);
+                        // flash("UNKO!");
+                        $.alert("Alert Message", "Alert Title")
+
+                    }, resp => {
+                        console.log(resp);
+                    })
+            });
+
+        // ダイアログを閉じる
+        $$('#save-file-dialog').modal('hide');
+    });
+
+
+    $$('#load-file').on('click', (e) => {
+        googlePicker.showFilePicker( null, pickerEvent => {
+            switch(pickerEvent.action) {
+                case "loaded":
+                    break;
+                case "picked":
+                    let fileId = pickerEvent.docs[0].id;
+                    googlePicker.downloadFile(fileId)
+                        .then(resp => {
+                            $$('#file-content').val(resp.body);
+                        });
+                    break;
+            }
+        });
+    });
+
+    $$('#reset-folder').on('click', (e) => {
+        $$('#select-folder').val('My Drive');
+        $$('#folder-id').val('root');
+    });
+
+    $$('#reset-folder').trigger('click');
 };

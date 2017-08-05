@@ -1,318 +1,97 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Title</title>
-    <style type="text/css">
-        html,
-        body {
-            margin: 0;
-            overflow: hidden;
-            height: 100%;
-        }
-
-        #wrapper {
-            position: fixed;
-            top: 0;
-            width: 100%;
-            height: 100px;
-        }
-
-        /* Scale canvas with resize attribute to full size */
-        canvas[resize] {
-            position: fixed;
-            top: 100px;
-            width: 100%;
-            height: calc(100% - 100px);
-        }
-    </style>
-    <script src="http://code.jquery.com/jquery-1.9.1.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.17.4/lodash.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/paper.js/0.11.4/paper-full.js"></script>
-    <script type="text/javascript" src="paper-full.js"></script>
-</head>
 <body>
-<div id="wrapper">
-    <div id="downPoint">downPoint</div>
-    <div id="eventPoint">eventPoint</div>
-    <div id="delta">delta</div>
-    <div id="cursorPoint">cusorPoint</div>
-    <div id="cursorDelta">cusorDelta</div>
-    <div id="wheelDelta">wheelDelta</div>
-    <div id="canvasPoint">canvasPoint</div>
-    <div id="canvasSize">canvasSize</div>
-    <div id="viewSize">viweSize</div>
-    <div id="viewCenter">viewCenter</div>
-    <div id="viewRange">viewRange</div>
-</div>
-<canvas id="myCanvas" resize></canvas>
-</body>
+<button id="sign-in-or-out-button"
+        style="margin-left: 25px">Sign In/Authorize</button>
+<button id="revoke-access-button"
+        style="display: none; margin-left: 25px">Revoke access</button>
+
+<div id="auth-status" style="display: inline; padding-left: 25px"></div><hr>
+
 <script>
+    var GoogleAuth;
+    var SCOPE = 'https://www.googleapis.com/auth/drive';
+    function handleClientLoad() {
+        // Load the API's client and auth2 modules.
+        // Call the initClient function after the modules load.
+        gapi.load('client:auth2', initClient);
+    }
 
-    var BOARD_WIDTH = 6000;     // ボード幅
-    var BOARD_HEIGHT = 4000;    // ボード高さ
-    var INITIAL_ZOOM = 0.8;
-    var ZOOM_UNIT = 0.002;
-    var AVAILABLE_ZOOM_MIN = 0.2;
-    var AVAILABLE_ZOOM_MAX = 5;
+    function initClient() {
+        // Retrieve the discovery document for version 3 of Google Drive API.
+        // In practice, your app can retrieve one or more discovery documents.
+        var discoveryUrl = 'https://www.googleapis.com/discovery/v1/apis/drive/v3/rest';
 
-    var cursorPoint;        // ページ上のマウスカーソルの位置
-    var cursorDelta;        // ページ上のマウスカーソルの前フレーム位置との差分
-    var canvasPoint;        // キャンバス上のマウスカーソルの位置
-    var viewCenterMin;      // ビュー中心点の最小(左上)位置
-    var viewCenterMax;      // ビュー中心点の最大(右下)位置
-    var initialViewSize;    // 初期ビューサイズ
-    var boardMin;           // ボードの最小(左上)位置
-    var boardMax;           // ボードの最大(右下)位置
-    var shouldModifyViewCenter = true;      // ビュー中心点が移動可能範囲を超えたときに修正するか否かのフラグ
+        // Initialize the gapi.client object, which app uses to make API requests.
+        // Get API key and client ID from API Console.
+        // 'scope' field specifies space-delimited list of access scopes.
+        gapi.client.init({
+            'apiKey': 'AIzaSyB6Jfd-o3v5RafVjTNnkBevhjX3_EHqAlE',
+            'clientId': '658362738764-9kdasvdsndig5tsp38u7ra31fu0e7l5t.apps.googleusercontent.com',
+            'scope': SCOPE,
+            'discoveryDocs': ['https://www.googleapis.com/discovery/v1/apis/drive/v3/rest']
+        }).then(function () {
+            GoogleAuth = gapi.auth2.getAuthInstance();
 
-    paper.install(window);
-    window.onload = function () {
-        paper.install(window);
-        paper.setup("myCanvas");
+            // Listen for sign-in state changes.
+            GoogleAuth.isSignedIn.listen(updateSigninStatus);
 
-        // center of the view at first
-        var path = new Path.Circle({
-            center: view.center,
-            radius: 50,
-            fillColor: 'blue'
+            // Handle initial sign-in state. (Determine if user is already signed in.)
+            var user = GoogleAuth.currentUser.get();
+            setSigninStatus();
+
+            // Call handleAuthClick function when user clicks on
+            //      "Sign In/Authorize" button.
+            $('#sign-in-or-out-button').click(function() {
+                handleAuthClick();
+            });
+            $('#revoke-access-button').click(function() {
+                revokeAccess();
+            });
         });
+    }
 
-        var canvasWidth = $("#myCanvas")[0].width;
-        var canvasHeight = $("#myCanvas")[0].height;
-
-        // right bottom of the view
-        new Path.Circle({
-            center: new Point(canvasWidth, canvasHeight),
-            radius: 50,
-            fillColor: 'blue'
-        });
-
-        // center of the board & top-left of the view at first
-        new Path.Circle({
-            center: new Point(0,0),
-            radius: 50,
-            fillColor: 'blue'
-        });
-
-
-        initialViewSize = new Size(view.size);
-        viewCenterMin = new Point(view.size.width - BOARD_WIDTH/2, view.size.height - BOARD_HEIGHT/2);
-        viewCenterMax = new Point(BOARD_WIDTH/2, BOARD_HEIGHT/2);
-        boardMin = new Point(view.size.width/2 - BOARD_WIDTH/2, view.size.height/2 - BOARD_HEIGHT/2);
-        boardMax = new Point(view.size.width/2 + BOARD_WIDTH/2, view.size.height/2 + BOARD_HEIGHT/2);
-
-        console.log("viewCenterMin ", viewCenterMin);
-        console.log("viewCenterMax ", viewCenterMax);
-        console.log("boardMin ", boardMin);
-        console.log("boardMax ", boardMax);
-
-        // top-left of the board
-        new Path.Circle({
-            center: boardMin,
-            radius: 100,
-            fillColor: 'green'
-        });
-
-        // bottom-right of the board
-        new Path.Circle({
-            center: boardMax,
-            radius: 100,
-            fillColor: 'green'
-        });
-
-        // top-left of the center of view
-        new Path.Circle({
-            center: viewCenterMin,
-            radius: 50,
-            fillColor: 'red'
-        });
-
-        // bottom-right of the center of view
-        new Path.Circle({
-            center: viewCenterMax,
-            radius: 50,
-            fillColor: 'red'
-        });
-
-//        new Path.Circle({
-//            center: new Point(-width, height*2),
-//            radius: 100,
-//            fillColor: 'green'
-//        });
-//        new Path.Circle({
-//            center: new Point(width*2, height*2),
-//            radius: 100,
-//            fillColor: 'green'
-//        });
-//        new Path.Circle({
-//            center: new Point(width*2, -height),
-//            radius: 100,
-//            fillColor: 'green'
-//        });
-//        new Path.Circle({
-//            center: new Point(width*2, 0),
-//            radius: 100,
-//            fillColor: 'green'
-//        });
-//        new Path.Circle({
-//            center: new Point(width*2, height),
-//            radius: 100,
-//            fillColor: 'green'
-//        });
-//        new Path.Circle({
-//            center: new Point(width*2, height*2),
-//            radius: 100,
-//            fillColor: 'green'
-//        });
-
-
-        createGrid(50);
-
-//        view.viewSize = new Size(view.size.width/2, view.size.height/2);
-
-        $("#canvasSize")[0].innerHTML = "canvas size: " + $("#myCanvas")[0].width + ", " + $("#myCanvas")[0].height;
-        $("#viewSize")[0].innerHTML = "view size: " + view.size.width + ", " + view.size.height;
-
-        var tool = new Tool();
-
-        tool.onMouseMove = function (event) {
-            $("#eventPoint")[0].innerHTML = "event point: " + event.point.x + ", " + event.point.y;
-            $("#delta")[0].innerHTML = "delta: " + event.delta.x + ", " + event.delta.y;
+    function handleAuthClick() {
+        if (GoogleAuth.isSignedIn.get()) {
+            // User is authorized and has clicked 'Sign out' button.
+            GoogleAuth.signOut();
+        } else {
+            // User is not signed in. Start Google auth flow.
+            GoogleAuth.signIn();
         }
+    }
 
-        tool.onMouseDown = function (event) {
-            $("#downPoint")[0].innerHTML = "down point: " + event.downPoint.x + ", " + event.downPoint.y;
-            $("#eventPoint")[0].innerHTML = "event point: " + event.point.x + ", " + event.point.y;
+    function revokeAccess() {
+        GoogleAuth.disconnect();
+    }
+
+    function setSigninStatus(isSignedIn) {
+        var user = GoogleAuth.currentUser.get();
+        var isAuthorized = user.hasGrantedScopes(SCOPE);
+        if (isAuthorized) {
+            $('#sign-in-or-out-button').html('Sign out');
+            $('#revoke-access-button').css('display', 'inline-block');
+            $('#auth-status').html('You are currently signed in and have granted ' +
+                'access to this app.');
+        } else {
+            $('#sign-in-or-out-button').html('Sign In/Authorize');
+            $('#revoke-access-button').css('display', 'none');
+            $('#auth-status').html('You have not authorized this app or you are ' +
+                'signed out.');
         }
+    }
 
-        // カーソルの移動量に応じてビューを移動させる。
-        // 移動量はページ上のマウスカーソルの位置を利用する。
-        // 注: キャンバス上のマウスカーソルの位置は使えない。
-        tool.onMouseDrag = function (event) {
-            // 移動量をスケールに応じて変化させる
-            var moveUnit = 1 / view.getScaling().x;
-            var nextCenter = view.center.subtract(cursorDelta.multiply(moveUnit));
-
-            if (shouldModifyViewCenter) {
-                // ビューの中心点が移動可能領域からはみ出さないようにする
-                if ( nextCenter.x < viewCenterMin.x ) {
-                    nextCenter = new Point(viewCenterMin.x, nextCenter.y);
-                }
-                if ( viewCenterMax.x < nextCenter.x ) {
-                    nextCenter = new Point(viewCenterMax.x, nextCenter.y);
-                }
-                if ( nextCenter.y < viewCenterMin.y ) {
-                    nextCenter = new Point(nextCenter.x, viewCenterMin.y);
-                }
-                if ( viewCenterMax.y < nextCenter.y ) {
-                    nextCenter = new Point(nextCenter.x, viewCenterMax.y);
-                }
-            }
-
-            view.center = nextCenter;
-
-            $("#viewRange")[0].innerHTML = "view range: (" + viewCenterMin.x + "," + viewCenterMin.y + ") - (" + viewCenterMax.x + "," + viewCenterMax.y + ")";
-            $("#viewCenter")[0].innerHTML = "view center: " + view.center.x + ", " + view.center.y;
-        };
-
-
-        window.addEventListener('mousemove', function(e){
-            // ページ上のマウスカーソルの位置を更新
-            var cursorBefore = cursorPoint;
-            cursorPoint = new Point(e.pageX, e.pageY);
-            cursorDelta = cursorPoint.subtract(cursorBefore);
-
-            // キャンバス上のマウスカーソルの位置を更新
-            var point = paper.DomEvent.getOffset(e, $('#myCanvas')[0]);
-            canvasPoint = paper.view.viewToProject(point);
-
-            $("#cursorPoint")[0].innerHTML = "cursor point: " + cursorPoint.x + ", " + cursorPoint.y;
-            $("#cursorDelta")[0].innerHTML = "cursor delta: " + cursorDelta.x + ", " + cursorDelta.y;
-            $("#canvasPoint")[0].innerHTML = "canvas point: " + point.x + ", " + point.y;
-        });
-
-
-        // ホイールの移動量に応じてビューを拡大・縮小する。
-        window.addEventListener("mousewheel", function(e) {
-
-            $("#wheelDelta")[0].innerHTML = "wheelDelta: " + e.wheelDelta;
-
-            // scale()に与える率は、現在からの相対値
-            var newRelativeScale = 1 + ZOOM_UNIT * e.wheelDelta;
-            var newScale = view.getScaling().x * newRelativeScale;
-
-            // 最大拡大率・最小縮小率を超えないようにする
-            if (newScale < AVAILABLE_ZOOM_MIN) {
-                newRelativeScale = AVAILABLE_ZOOM_MIN / view.getScaling().x;
-            }
-            if (AVAILABLE_ZOOM_MAX < newScale) {
-                newRelativeScale = AVAILABLE_ZOOM_MAX / view.getScaling().x;
-            }
-
-            view.scale(newRelativeScale, canvasPoint);
-            console.info("currentZoom: ", newScale);
-
-            $("#viewSize")[0].innerHTML = "view size: " + view.size.width + ", " + view.size.height;
-
-            // ビューの端がボードの範囲を超えないよう、ビュー中心の移動可能範囲を変更する
-            if (view.size.width < BOARD_WIDTH && view.size.height < BOARD_HEIGHT) {
-                viewCenterMin = new Point(
-                    initialViewSize.width / 2 + view.size.width / 2 - BOARD_WIDTH / 2,
-                    initialViewSize.height / 2 + view.size.height / 2 - BOARD_HEIGHT / 2);
-                viewCenterMax = new Point(
-                    initialViewSize.width / 2 - view.size.width / 2 + BOARD_WIDTH / 2,
-                    initialViewSize.height / 2 - view.size.height / 2 + BOARD_HEIGHT / 2);
-                shouldModifyViewCenter = true;
-            } else {
-                // ビューサイズがボードの幅または高さを超えた場合は、ビューの中心点の修正を行わない。
-                shouldModifyViewCenter = false;
-            }
-
-        });
-
-        view.scale(INITIAL_ZOOM, view.center);
-    };
-
-
-    function createGrid(size) {
-        var canvas = $("#myCanvas")[0];
-
-        let rangeX = _.range(Math.floor(boardMin.x / size), Math.floor(boardMax.x / size));
-        let rangeY = _.range(Math.floor(boardMin.y / size), Math.floor(boardMax.y / size));
-        var line;
-        // 縦線
-        rangeX.forEach( function (i) {
-            line = new Path.Line(new paper.Point(size * i, boardMin.y), new paper.Point(size * i, boardMax.y));
-            if (i === 0) {
-                line.strokeColor = 'red';
-                line.strokeWidth = 3;
-            } else if (i % 4 === 0) {
-                line.strokeColor = 'grey';
-                line.strokeWidth = 3;
-            } else {
-                line.strokeColor = 'grey';
-            }
-        });
-        // 横線
-        rangeY.forEach( function(i) {
-            line = new Path.Line(new paper.Point(boardMin.x, size*i), new paper.Point(boardMax.x, size*i));
-            if (i === 0) {
-                line.strokeColor = 'red';
-                line.strokeWidth = 3;
-            } else if (i % 4 ===0) {
-                line.strokeColor = 'grey';
-                line.strokeWidth = 3;
-            } else {
-                line.strokeColor = 'grey';
-            }
-        })
-//        for (var i=-numX; i <= numX*2 ; i++) {
-//        }
-//        // 横線
-//        for (var i=-numY ; i <= numY*2 ; i++) {
-//        }
+    function updateSigninStatus(isSignedIn) {
+        setSigninStatus();
     }
 </script>
+
+
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js"></script>
+<script async defer src="https://apis.google.com/js/api.js"
+        onload="this.onload=function(){};handleClientLoad()"
+        onreadystatechange="if (this.readyState === 'complete') this.onload()">
+</script>
+</body>
 </html>
 
