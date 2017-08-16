@@ -1,6 +1,7 @@
 
-
 export class GoogleDriveAPI {
+    apiKey: string;
+    accessToken: string;
 
     constructor(apiKey, accessToken) {
         this.apiKey = apiKey;
@@ -18,7 +19,7 @@ export class GoogleDriveAPI {
      */
     showFolderPicker(parents, callback) {
         let foldersOnlyView = new google.picker.DocsView(google.picker.ViewId.FOLDERS)
-            .setParent('root')      // これを付けないと全ての階層のフォルダが列挙される
+            .setParent(parents)      // これを付けないと全ての階層のフォルダが列挙される
             .setIncludeFolders(true)
             .setSelectFolderEnabled(true);
 
@@ -31,10 +32,6 @@ export class GoogleDriveAPI {
             .setDeveloperKey(this.apiKey)
             .setCallback(callback);
 
-        if (parents) {
-            pickerBuilder.setParents(parents);
-        }
-
         let pickerInstance = pickerBuilder.build();
 
         pickerInstance.setVisible(true);
@@ -42,16 +39,18 @@ export class GoogleDriveAPI {
 
     /**
      * ドキュメントの表示・選択が可能なPickerを表示する。
-     * @param {Array<string>} parents
+     * @param {string} parents
      * @param callback
      */
     showFilePicker(parents, callback) {
         // ファイルとフォルダー両方を表示し、ファイルの選択が可能なビュー
         let docsView = new google.picker.DocsView()
-            .setIncludeFolders(true)
+            .setParent(parents)
+            .setIncludeFolders(true);
 
         // ファイルとフォルダー両方の表示・選択が可能なビュー
         let docsAndFoldersView = new google.picker.DocsView()
+            .setParent(parents)
             .setIncludeFolders(true)
             .setSelectFolderEnabled(true);
 
@@ -65,9 +64,6 @@ export class GoogleDriveAPI {
             .setDeveloperKey(this.apiKey)
             .setCallback(callback);
 
-        if (parents) {
-            pickerBuilder.setParents(parents);
-        }
 
         let pickerInstance = pickerBuilder.build();
 
@@ -171,7 +167,7 @@ export class GoogleDriveAPI {
      * @returns {Promise}
      */
     createFile(fileName, mimeType, parents) {
-        let metadata = {
+        let metadata: any = {
             // mimeType: 'application/vnd.google-apps.document',
             // mimeType: 'application/json',
             mimeType: mimeType,
@@ -202,23 +198,24 @@ export class GoogleDriveAPI {
      */
     _makeRequest (method, url) {
         return new Promise((resolve, reject) => {
-            var xhr = new XMLHttpRequest();
+            let xhr = new XMLHttpRequest();
+            let status;
             xhr.open(method, url);
             xhr.setRequestHeader('Authorization', 'Bearer ' + this.accessToken);
             xhr.setRequestHeader('Access-Control-Allow-Origin', '*');
             xhr.onload = () => {
-                if (this.status >= 200 && this.status < 300) {
+                if (status >= 200 && status < 300) {
                     resolve(xhr.response);
                 } else {
                     reject({
-                        status: this.status,
+                        status: status,
                         statusText: xhr.statusText
                     });
                 }
             };
             xhr.onerror = () => {
                 reject({
-                    status: this.status,
+                    status: status,
                     statusText: xhr.statusText
                 });
             };

@@ -2,9 +2,7 @@ var webpack = require("webpack");
 module.exports = {
     context: __dirname + '/src',
 
-    entry: {
-        js: "./entry.js"
-    },
+    entry: "./entry.ts",
 
     output: {
         path: __dirname + '/dist',
@@ -14,10 +12,8 @@ module.exports = {
     module: {
         loaders: [
             {
-                test: /\.js$/,
-                exclude: /node_modules/,
-                loader: 'babel-loader',
-                query: { presets: ['es2015'] }
+                test: /\.tsx?$/,
+                loader: "ts-loader"
             },
             { test: /\.css$/, loader: 'style-loader!css-loader' },
             { test: /\.eot(\?v=\d+\.\d+\.\d+)?$/, loader: 'file-loader' },
@@ -40,7 +36,7 @@ module.exports = {
     ],
 
     resolve: {
-        extensions: ['.js', '.jsx'],
+        extensions: [".webpack.js", ".web.js", ".ts", ".tsx", ".js"]
     },
 
 

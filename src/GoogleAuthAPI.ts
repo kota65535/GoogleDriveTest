@@ -1,6 +1,10 @@
 
-
 export class GoogleAuthAPI {
+    apiKey: string;
+    clientId: string;
+    scope: string;
+    discoverDocs: Array<string>;
+    authInstance: any;
 
     constructor(apiKey, clientId, scope, discoverDocs, onLoaded, onSignInStatusChanged) {
         this.apiKey = apiKey;

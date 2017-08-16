@@ -65,7 +65,7 @@ function enableSaveFileButton(fileId) {
 
 
 
-window.handleClientLoad = () => {
+(<any>window).handleClientLoad = () => {
     // Load the API's client and auth2 modules.
     // Call the initClient function after the modules load.
     googleAuth = new GoogleAuthAPI(
