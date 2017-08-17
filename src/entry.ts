@@ -9,6 +9,7 @@ import 'bootstrap/dist/css/bootstrap.css';
 import 'bootstrap-notify';
 import {GoogleAuthAPI} from "./GoogleAuthAPI";
 import {GoogleDriveAPI} from "./GoogleDriveAPI";
+import {HogeClass} from "./HogeClass.js";
 
 
 var SCOPE ='https://www.googleapis.com/auth/docs';
@@ -81,6 +82,8 @@ function enableSaveFileButton(fileId) {
 }
 
 window.onload = function () {
+
+    console.log(new HogeClass().getHoge());
 
     $("#sign-in-or-out-button").on("click", (e) => {
         if (googleAuth.isSignedIn()) {

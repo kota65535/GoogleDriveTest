@@ -2,7 +2,9 @@ var webpack = require("webpack");
 module.exports = {
     context: __dirname + '/src',
 
-    entry: "./entry.ts",
+    entry: {
+        js: "./entry.js"
+    },
 
     output: {
         path: __dirname + '/dist',
@@ -14,6 +16,12 @@ module.exports = {
             {
                 test: /\.tsx?$/,
                 loader: "ts-loader"
+            },
+            {
+                test: /\.js$/,
+                exclude: /node_modules/,
+                loader: 'babel-loader',
+                query: { presets: ['es2015'] }
             },
             { test: /\.css$/, loader: 'style-loader!css-loader' },
             { test: /\.eot(\?v=\d+\.\d+\.\d+)?$/, loader: 'file-loader' },
@@ -28,7 +36,7 @@ module.exports = {
         new webpack.ProvidePlugin({
             $: 'jquery',
             jQuery: 'jquery',
-            'window.jQuery': 'jquery',
+            "window.jQuery": 'jquery',
             Popper: ['popper.js', 'default'],
             "Tether": 'tether',
             $$: 'jquery-selector-cache'
@@ -39,6 +47,5 @@ module.exports = {
         extensions: [".webpack.js", ".web.js", ".ts", ".tsx", ".js"]
     },
 
-
-    devtool: "source-map"
+    devtool: "inline-source-map"
 }

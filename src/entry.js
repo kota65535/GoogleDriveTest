@@ -10,6 +10,7 @@ require("bootstrap/dist/css/bootstrap.css");
 require("bootstrap-notify");
 const GoogleAuthAPI_1 = require("./GoogleAuthAPI");
 const GoogleDriveAPI_1 = require("./GoogleDriveAPI");
+const HogeClass_js_1 = require("./HogeClass.js");
 var SCOPE = 'https://www.googleapis.com/auth/docs';
 var googleAuth;
 var googlePicker;
@@ -59,6 +60,7 @@ window.handleClientLoad = () => {
     // console.info(googleAuth.getCurrentUser());
 };
 window.onload = function () {
+    console.log(new HogeClass_js_1.HogeClass().getHoge());
     $("#sign-in-or-out-button").on("click", (e) => {
         if (googleAuth.isSignedIn()) {
             // User is authorized and has clicked 'Sign out' button.
